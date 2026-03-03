@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GatoTec Café</title>
+  <link rel="stylesheet" href="main.css" />
+</head>
+
+<body class="theme-light">
+  <header class="header">
+    <div class="container header__content">
+      <div class="h-content">
+        <div class="logo" aria-hidden="true">🐾</div>
+        <div>
+          <h1 class="name" id="brandName">GatoTec Café</h1>
+          <p class="tagline" id="brandTagline">Cat café del Tec: café rico, gatos lindos</p>
+        </div>
+      </div>
+
+      <nav class="actions">
+        <button class="btn btn--light" id="langBtn" type="button">EN</button>
+        <button class="btn btn--primary" id="themeBtn" type="button">Modo oscuro</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="subsect card">
+      <div class="subsect--text">
+        <h2 id="introTitle">Tu pausa favorita entre clases</h2>
+        <p id="introText">
+          En GatoTec Café puedes estudiar, relajarte y convivir con gatos rescatados
+          mientras tomas un latte. Ambiente tranquilo y mesas cómodas.
+        </p>
+      </div>
+
+      <div class="subsect--image">
+        <img
+          class="cat--image"
+          src="https://images.squarespace-cdn.com/content/v1/607f89e638219e13eee71b1e/1684821560422-SD5V37BAG28BURTLIXUQ/michael-sum-LEpfefQf4rU-unsplash.jpg"
+          alt="Gato descansando en una cafetería"
+        />
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h3 id="menuTitle">Menú</h3>
+        <p class="muted" id="menuSubtitle">Tres favoritos.</p>
+
+        <ul class="menu">
+          <li class="menu__item">
+            <div>
+              <strong id="item1Name">Latte “Michi”</strong>
+              <div class="muted" id="item1Desc">Cremoso + canela.</div>
+            </div>
+            <span class="price">$55</span>
+          </li>
+
+          <li class="menu__item">
+            <div>
+              <strong id="item2Name">Chai Ronroneo</strong>
+              <div class="muted" id="item2Desc">Calientito y especiado.</div>
+            </div>
+            <span class="price">$60</span>
+          </li>
+
+          <li class="menu__item">
+            <div>
+              <strong id="item3Name">Galleta Patita</strong>
+              <div class="muted" id="item3Desc">Avena + chocolate.</div>
+            </div>
+            <span class="price">$35</span>
+          </li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h3 id="rulesTitle">Reglas con los gatos</h3>
+        <p class="muted" id="rulesSubtitle">Para que todos estén a gusto.</p>
+
+        <ol class="rules">
+          <li id="rule1">No cargar gatos sin permiso.</li>
+          <li id="rule2">No flash en fotos.</li>
+          <li id="rule3">Si el gato se va, lo dejas ir.</li>
+        </ol>
+
+        <div class="notice">
+          <strong id="noticeTitle">Tip:</strong>
+          <span id="noticeText">Lávate las manos antes y después de jugar.</span>
+        </div>
+      </article>
+    </section>
+
+    <footer class="footer">
+      <p class="muted">Actividad 3 — Santiago Hernández - A01787550.</p>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
