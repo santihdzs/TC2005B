@@ -8,8 +8,8 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const canvasWidth = 800;
-const canvasHeight = 600;
+const canvasWidth = canvas.width;
+const canvasHeight = canvas.height;
 
 const paddleHeight = 10;
 const paddleWidth = 100;
@@ -18,7 +18,6 @@ let paddleX = (canvasWidth - paddleWidth) / 2;
 const ballRadius = 8;
 let ballX = canvasWidth / 2;
 let ballY = canvasHeight - 30;
-let ballSpeed = 4;
 let ballSpeedX = 4;
 let ballSpeedY = -4;
 
@@ -33,10 +32,11 @@ const blockOffsetLeft = 30;
 let blocks = [];
 let score = 0;
 let lives = 3;
-let level = 1;
 let isGameOver = false;
-let ballServed = false;
+let isGameWon = false;
+let extraBalls = [];
 
+const blocksDestroyedEl = document.getElementById("blocksDestroyed");
 const livesEl = document.getElementById("lives");
 const rowsInput = document.getElementById("rowsInput");
 const colsInput = document.getElementById("colsInput");
@@ -47,7 +47,8 @@ function initBlocks() {
     for (let c = 0; c < numCols; c++) {
         blocks[c] = [];
         for (let r = 0; r < numRows; r++) {
-            blocks[c][r] = { x: 0, y: 0, status: 1 };
+            let isSpecial = Math.random() < 0.1;
+            blocks[c][r] = { x: 0, y: 0, status: 1, isSpecial: isSpecial };
         }
     }
 }
@@ -55,15 +56,14 @@ function initBlocks() {
 function restartGame() {
     ballX = canvasWidth / 2;
     ballY = canvasHeight - 30;
-    ballSpeed = 4;
     ballSpeedX = 4;
     ballSpeedY = -4;
     paddleX = (canvasWidth - paddleWidth) / 2;
     score = 0;
     lives = 3;
-    level = 1;
     isGameOver = false;
-    ballServed = false;
+    isGameWon = false;
+    extraBalls = [];
     numRows = parseInt(rowsInput.value);
     numCols = parseInt(colsInput.value);
     initBlocks();
@@ -71,6 +71,7 @@ function restartGame() {
 }
 
 function updateDisplay() {
+    blocksDestroyedEl.textContent = score;
     livesEl.textContent = lives;
 }
 
@@ -106,8 +107,21 @@ function drawBlocks() {
                 let blockY = (r * (blockHeight + blockPadding)) + blockOffsetTop;
                 blocks[c][r].x = blockX;
                 blocks[c][r].y = blockY;
-                drawRect(blockX, blockY, blockWidth, blockHeight, "#0095DD");
+                if (blocks[c][r].isSpecial) {
+                    drawRect(blockX, blockY, blockWidth, blockHeight, "#FF0000");
+                } else {
+                    drawRect(blockX, blockY, blockWidth, blockHeight, "#0095DD");
+                }
             }
+        }
+    }
+}
+
+function drawExtraBalls() {
+    for (let i = 0; i < extraBalls.length; i++) {
+        let b = extraBalls[i];
+        if (b.active) {
+            drawCircle(b.x, b.y, ballRadius, "#FF0000");
         }
     }
 }
@@ -117,6 +131,13 @@ function drawGameOver() {
     ctx.fillStyle = "red";
     ctx.textAlign = "center";
     ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2);
+}
+
+function drawVictory() {
+    ctx.font = "40px Arial";
+    ctx.fillStyle = "green";
+    ctx.textAlign = "center";
+    ctx.fillText("YOU WIN!", canvasWidth / 2, canvasHeight / 2);
 }
 
 function collisionDetection() {
@@ -129,16 +150,59 @@ function collisionDetection() {
                     ballSpeedY = -ballSpeedY;
                     b.status = 0;
                     score++;
+                    if (b.isSpecial) {
+                        createExtraBall();
+                    }
+                    if (score === numRows * numCols) {
+                        isGameWon = true;
+                    }
+                    
+                    if (isGameWon) {
+                        score = 0;
+                        isGameWon = false;
+                        ballX = canvasWidth / 2;
+                        ballY = canvasHeight - 30;
+                        ballSpeedX = 4;
+                        ballSpeedY = -4;
+                        paddleX = (canvasWidth - paddleWidth) / 2;
+                        initBlocks();
+                    }
                 }
             }
         }
     }
 }
 
-function serveBall() {
-    let angle = Math.PI / 4 + Math.random() * Math.PI / 2;
-    ballSpeedX = Math.cos(angle) * ballSpeed;
-    ballSpeedY = -Math.abs(Math.sin(angle)) * ballSpeed;
+function createExtraBall() {
+    extraBalls.push({
+        x: ballX,
+        y: ballY,
+        speedX: -ballSpeedX,
+        speedY: ballSpeedY,
+        active: true
+    });
+}
+
+function updateExtraBalls() {
+    for (let i = 0; i < extraBalls.length; i++) {
+        let b = extraBalls[i];
+        if (!b.active) continue;
+        b.x += b.speedX;
+        b.y += b.speedY;
+        if (b.x + ballRadius > canvasWidth || b.x - ballRadius < 0) {
+            b.speedX = -b.speedX;
+        }
+        if (b.y - ballRadius < 0) {
+            b.speedY = -b.speedY;
+        }
+        if (b.y + ballRadius > canvasHeight) {
+            b.active = false;
+        }
+        if (b.y + ballRadius > canvasHeight - paddleHeight &&
+            b.x > paddleX && b.x < paddleX + paddleWidth) {
+            b.speedY = -b.speedY;
+        }
+    }
 }
 
 function draw() {
@@ -146,62 +210,48 @@ function draw() {
     drawBlocks();
     drawBall();
     drawPaddle();
+    drawExtraBalls();
     
     if (isGameOver) {
         drawGameOver();
         return;
     }
     
-    // serve ball with space
-    if (!ballServed) {
-        ballX = paddleX + paddleWidth / 2;
-        ballY = canvasHeight - paddleHeight - ballRadius;
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.fillText("Presiona ESPACIO para servir", canvasWidth / 2, canvasHeight / 2);
-    } else {
-        collisionDetection();
-        ballX += ballSpeedX;
-        ballY += ballSpeedY;
-        
-        if (ballX + ballRadius > canvasWidth || ballX - ballRadius < 0) {
-            ballSpeedX = -ballSpeedX;
-        }
-        if (ballY - ballRadius < 0) {
+    if (isGameWon) {
+        drawVictory();
+        return;
+    }
+    
+    collisionDetection();
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+    updateExtraBalls();
+    
+    if (ballX + ballRadius > canvasWidth || ballX - ballRadius < 0) {
+        ballSpeedX = -ballSpeedX;
+    }
+    if (ballY - ballRadius < 0) {
+        ballSpeedY = -ballSpeedY;
+    }
+    if (ballY + ballRadius > canvasHeight - paddleHeight) {
+        if (ballX > paddleX && ballX < paddleX + paddleWidth) {
             ballSpeedY = -ballSpeedY;
+            let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+            let angle = (Math.PI / 2) + hit * (Math.PI / 9);
+            ballSpeedX = Math.cos(angle) * 4;
         }
-        if (ballY + ballRadius > canvasHeight - paddleHeight) {
-            if (ballX > paddleX && ballX < paddleX + paddleWidth) {
-                let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-                let angle = (Math.PI / 2) + hit * (Math.PI / 9);
-                ballSpeedX = Math.cos(angle) * ballSpeed;
-                ballSpeedY = -Math.abs(Math.sin(angle)) * ballSpeed;
-            }
-        }
-        
-        if (ballY + ballRadius > canvasHeight) {
-            lives--;
-            if (lives === 0) {
-                isGameOver = true;
-            } else {
-                ballServed = false;
-            }
-        }
-        
-        // check if all blocks destroyed
-        let blocksLeft = 0;
-        for (let c = 0; c < numCols; c++) {
-            for (let r = 0; r < numRows; r++) {
-                if (blocks[c][r].status === 1) blocksLeft++;
-            }
-        }
-        
-        if (blocksLeft === 0) {
-            level++;
-            ballSpeed += 0.5;
-            ballServed = false;
-            initBlocks();
+    }
+    
+    if (ballY + ballRadius > canvasHeight) {
+        lives--;
+        if (lives === 0) {
+            isGameOver = true;
+        } else {
+            ballX = canvasWidth / 2;
+            ballY = canvasHeight - 30;
+            ballSpeedX = 4;
+            ballSpeedY = -4;
+            paddleX = (canvasWidth - paddleWidth) / 2;
         }
     }
     
@@ -222,17 +272,13 @@ function keyDownHandler(e) {
     else if (e.key === "Left" || e.key === "ArrowLeft") {
         leftPressed = true;
     }
-    if (e.code === "Space" && !ballServed && !isGameOver) {
-        ballServed = true;
-        serveBall();
-    }
 }
 
 function keyUpHandler(e) {
     if (e.key === "Right" || e.key === "ArrowRight") {
         rightPressed = false;
     }
-    else if (e.key === "ArrowLeft" || e.key === "ArrowLeft") {
+    else if (e.key === "Left" || e.key === "ArrowLeft") {
         leftPressed = false;
     }
 }
