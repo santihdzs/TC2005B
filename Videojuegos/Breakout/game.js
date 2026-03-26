@@ -11,32 +11,29 @@ const ctx = canvas.getContext("2d");
 const canvasWidth = 800;
 const canvasHeight = 600;
 
-const paddleHeight = 10;
-const paddleWidth = 100;
-let paddleX = (canvasWidth - paddleWidth) / 2;
-let paddleY = canvasHeight - 40;
+const paddleWidth = 60;
+const paddleHeight = 60;
+let paddleX = canvasWidth / 2 - paddleWidth / 2;
+let paddleY = canvasHeight / 2 - paddleHeight / 2;
 
 const ballRadius = 8;
 let ballX = canvasWidth / 2;
-let ballY = canvasHeight - 30;
-let ballSpeedX = 2.5;
-let ballSpeedY = -2.5;
+let ballY = canvasHeight / 2;
+let ballSpeedX = 0.5;
+let ballSpeedY = 0.5;
 
-let numRows = 5;
-let numCols = 8;
-const blockWidth = 75;
-const blockHeight = 20;
-const blockPadding = 10;
-const blockOffsetTop = 50;
+const paddleMargin = 100;
+const minPaddleX = paddleMargin;
+const maxPaddleX = canvasWidth - paddleMargin - paddleWidth;
+const minPaddleY = paddleMargin;
+const maxPaddleY = canvasHeight - paddleMargin - paddleHeight;
 
+const blockSize = 30;
 let blocks = [];
 let score = 0;
 let lives = 3;
 let isGameOver = false;
-let isGameWon = false;
-let flipped = false;
-let lastFlipTime = 0;
-const flipInterval = 8000;
+let ballStarted = false;
 
 const blocksDestroyedEl = document.getElementById("blocksDestroyed");
 const livesEl = document.getElementById("lives");
@@ -46,32 +43,36 @@ const restartBtn = document.getElementById("restartBtn");
 
 function initBlocks() {
     blocks = [];
-    let totalWidth = numCols * blockWidth + (numCols - 1) * blockPadding;
-    let blockOffsetLeft = (canvasWidth - totalWidth) / 2;
     
-    for (let c = 0; c < numCols; c++) {
-        blocks[c] = [];
-        for (let r = 0; r < numRows; r++) {
-            blocks[c][r] = { x: 0, y: 0, status: 1 };
-        }
+    // top row
+    for (let i = 0; i < 20; i++) {
+        blocks.push({ x: i * blockSize, y: 0, status: 1 });
+    }
+    // bottom row
+    for (let i = 0; i < 20; i++) {
+        blocks.push({ x: i * blockSize, y: canvasHeight - blockSize, status: 1 });
+    }
+    // left column
+    for (let i = 1; i < 18; i++) {
+        blocks.push({ x: 0, y: i * blockSize, status: 1 });
+    }
+    // right column
+    for (let i = 1; i < 18; i++) {
+        blocks.push({ x: canvasWidth - blockSize, y: i * blockSize, status: 1 });
     }
 }
 
 function restartGame() {
     ballX = canvasWidth / 2;
-    ballY = paddleY - ballRadius;
-    ballSpeedX = 2.5;
-    ballSpeedY = -2.5;
-    paddleX = (canvasWidth - paddleWidth) / 2;
-    paddleY = flipped ? 40 : canvasHeight - 40;
+    ballY = canvasHeight / 2;
+    ballSpeedX = 0.5;
+    ballSpeedY = 0.5;
+    paddleX = canvasWidth / 2 - paddleWidth / 2;
+    paddleY = canvasHeight / 2 - paddleHeight / 2;
     score = 0;
     lives = 3;
     isGameOver = false;
-    isGameWon = false;
-    flipped = false;
-    lastFlipTime = Date.now();
-    numRows = parseInt(rowsInput.value);
-    numCols = parseInt(colsInput.value);
+    ballStarted = false;
     initBlocks();
     updateDisplay();
 }
@@ -98,7 +99,7 @@ function drawCircle(x, y, r, color) {
 }
 
 function drawPaddle() {
-    drawRect(paddleX, paddleY, paddleWidth, paddleHeight, "#0095DD");
+    drawRect(paddleX, paddleY, paddleWidth, paddleHeight, "#3333AA");
 }
 
 function drawBall() {
@@ -106,23 +107,9 @@ function drawBall() {
 }
 
 function drawBlocks() {
-    let totalWidth = numCols * blockWidth + (numCols - 1) * blockPadding;
-    let blockOffsetLeft = (canvasWidth - totalWidth) / 2;
-    
-    for (let c = 0; c < numCols; c++) {
-        for (let r = 0; r < numRows; r++) {
-            if (blocks[c][r].status === 1) {
-                let blockY;
-                if (flipped) {
-                    blockY = canvasHeight - blockOffsetTop - (r + 1) * (blockHeight + blockPadding) + blockPadding;
-                } else {
-                    blockY = (r * (blockHeight + blockPadding)) + blockOffsetTop;
-                }
-                let blockX = (c * (blockWidth + blockPadding)) + blockOffsetLeft;
-                blocks[c][r].x = blockX;
-                blocks[c][r].y = blockY;
-                drawRect(blockX, blockY, blockWidth, blockHeight, "#0095DD");
-            }
+    for (let b of blocks) {
+        if (b.status === 1) {
+            drawRect(b.x, b.y, blockSize, blockSize, "#0095DD");
         }
     }
 }
@@ -134,20 +121,35 @@ function drawGameOver() {
     ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2);
 }
 
+function drawCenter() {
+    ctx.beginPath();
+    ctx.arc(canvasWidth / 2, canvasHeight / 2, 25, 0, Math.PI * 2);
+    ctx.fillStyle = "#FF0000";
+    ctx.fill();
+    ctx.closePath();
+}
+
 function collisionDetection() {
-    for (let c = 0; c < numCols; c++) {
-        for (let r = 0; r < numRows; r++) {
-            let b = blocks[c][r];
-            if (b.status === 1) {
-                if (ballX + ballRadius > b.x && ballX - ballRadius < b.x + blockWidth && 
-                    ballY + ballRadius > b.y && ballY - ballRadius < b.y + blockHeight) {
+    for (let b of blocks) {
+        if (b.status === 1) {
+            if (ballX + ballRadius > b.x && ballX - ballRadius < b.x + blockSize && 
+                ballY + ballRadius > b.y && ballY - ballRadius < b.y + blockSize) {
+                // determine which side was hit
+                let overlapLeft = ballX + ballRadius - b.x;
+                let overlapRight = b.x + blockSize - (ballX - ballRadius);
+                let overlapTop = ballY + ballRadius - b.y;
+                let overlapBottom = b.y + blockSize - (ballY - ballRadius);
+                
+                let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                
+                if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+                    ballSpeedX = -ballSpeedX;
+                } else {
                     ballSpeedY = -ballSpeedY;
-                    b.status = 0;
-                    score++;
-                    if (score === numRows * numCols) {
-                        isGameWon = true;
-                    }
                 }
+                
+                b.status = 0;
+                score++;
             }
         }
     }
@@ -155,6 +157,9 @@ function collisionDetection() {
 
 function draw() {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // draw center danger zone
+    drawCenter();
     drawBlocks();
     drawBall();
     drawPaddle();
@@ -164,129 +169,129 @@ function draw() {
         return;
     }
     
-    if (isGameWon) {
-        score = 0;
-        isGameWon = false;
-        ballX = canvasWidth / 2;
-        ballY = paddleY - ballRadius;
-        ballSpeedX = 2.5;
-        ballSpeedY = -2.5;
-        paddleX = (canvasWidth - paddleWidth) / 2;
-        initBlocks();
-    }
-    
-    // flip every 5 seconds
-    let currentTime = Date.now();
-    if (currentTime - lastFlipTime > flipInterval) {
-        flipped = !flipped;
-        paddleY = flipped ? 40 : canvasHeight - 40;
-        ballSpeedY = -ballSpeedY;
-        lastFlipTime = currentTime;
+    if (!ballStarted) {
+        ballX = paddleX + paddleWidth / 2;
+        ballY = paddleY + paddleHeight / 2;
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText("Presiona ESPACIO para iniciar", canvasWidth / 2, canvasHeight / 2 + 50);
+        updateDisplay();
+        requestAnimationFrame(draw);
+        return;
     }
     
     collisionDetection();
     ballX += ballSpeedX;
     ballY += ballSpeedY;
     
+    // wall collisions
     if (ballX + ballRadius > canvasWidth || ballX - ballRadius < 0) {
         ballSpeedX = -ballSpeedX;
     }
+    if (ballY + ballRadius > canvasHeight || ballY - ballRadius < 0) {
+        ballSpeedY = -ballSpeedY;
+    }
     
-    if (flipped) {
-        if (ballY - ballRadius < 0) {
+    // paddle collision
+    if (ballX + ballRadius > paddleX && ballX - ballRadius < paddleX + paddleWidth &&
+        ballY + ballRadius > paddleY && ballY - ballRadius < paddleY + paddleHeight) {
+        // reverse based on where it hit
+        let hitX = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+        let hitY = (ballY - (paddleY + paddleHeight / 2)) / (paddleHeight / 2);
+        
+        if (Math.abs(hitX) > Math.abs(hitY)) {
+            ballSpeedX = -ballSpeedX;
+            ballSpeedX += hitX * 0.3;
+        } else {
             ballSpeedY = -ballSpeedY;
+            ballSpeedY += hitY * 0.3;
         }
-        if (ballY + ballRadius > paddleY && ballY - ballRadius < paddleY + paddleHeight) {
-            if (ballX > paddleX && ballX < paddleX + paddleWidth) {
-                ballSpeedY = -ballSpeedY;
-                let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-                let angle = (Math.PI / 2) + hit * (Math.PI / 9);
-                ballSpeedX = Math.cos(angle) * 2.5;
-                ballSpeedY = -Math.abs(Math.sin(angle)) * 4;
-            }
+    }
+    
+    // center collision
+    let distToCenter = Math.sqrt(Math.pow(ballX - canvasWidth/2, 2) + Math.pow(ballY - canvasHeight/2, 2));
+    if (distToCenter < 25 + ballRadius) {
+        lives--;
+        if (lives === 0) {
+            isGameOver = true;
+        } else {
+            ballStarted = false;
+            ballSpeedX = 0.5;
+            ballSpeedY = 0.5;
         }
-        if (ballY + ballRadius > canvasHeight) {
-            lives--;
-            if (lives === 0) {
-                isGameOver = true;
-            } else {
-                ballX = canvasWidth / 2;
-                ballY = paddleY - ballRadius;
-                ballSpeedX = 2.5;
-                ballSpeedY = 2.5;
-                paddleX = (canvasWidth - paddleWidth) / 2;
-            }
-        }
-    } else {
-        if (ballY - ballRadius < 0) {
-            ballSpeedY = -ballSpeedY;
-        }
-        if (ballY + ballRadius > paddleY && ballY - ballRadius < paddleY + paddleHeight) {
-            if (ballX > paddleX && ballX < paddleX + paddleWidth) {
-                ballSpeedY = -ballSpeedY;
-                let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-                let angle = (Math.PI / 2) + hit * (Math.PI / 9);
-                ballSpeedX = Math.cos(angle) * 2.5;
-                ballSpeedY = Math.abs(Math.sin(angle)) * 4;
-            }
-        }
-        if (ballY + ballRadius > canvasHeight) {
-            lives--;
-            if (lives === 0) {
-                isGameOver = true;
-            } else {
-                ballX = canvasWidth / 2;
-                ballY = paddleY - ballRadius;
-                ballSpeedX = 2.5;
-                ballSpeedY = -2.5;
-                paddleX = (canvasWidth - paddleWidth) / 2;
-            }
-        }
+    }
+    
+    // check if all blocks destroyed
+    let blocksLeft = 0;
+    for (let b of blocks) {
+        if (b.status === 1) blocksLeft++;
+    }
+    
+    if (blocksLeft === 0) {
+        initBlocks();
+        ballSpeedX += 0.2;
+        ballSpeedY += 0.2;
     }
     
     updateDisplay();
     requestAnimationFrame(draw);
 }
 
-let rightPressed = false;
+let upPressed = false;
+let downPressed = false;
 let leftPressed = false;
+let rightPressed = false;
 
 document.addEventListener("keydown", keyDownHandler);
 document.addEventListener("keyup", keyUpHandler);
 
 function keyDownHandler(e) {
-    if (e.key === "Right" || e.key === "ArrowRight") {
+    if (e.key === "ArrowUp" || e.key === "Up") {
+        upPressed = true;
+    }
+    else if (e.key === "ArrowDown" || e.key === "Down") {
+        downPressed = true;
+    }
+    else if (e.key === "ArrowLeft" || e.key === "Left") {
+        leftPressed = true;
+    }
+    else if (e.key === "ArrowRight" || e.key === "Right") {
         rightPressed = true;
     }
-    else if (e.key === "Left" || e.key === "ArrowLeft") {
-        leftPressed = true;
+    if (e.code === "Space" && !ballStarted && !isGameOver) {
+        ballStarted = true;
     }
 }
 
 function keyUpHandler(e) {
-    if (e.key === "Right" || e.key === "ArrowRight") {
-        rightPressed = false;
+    if (e.key === "ArrowUp" || e.key === "Up") {
+        upPressed = false;
     }
-    else if (e.key === "ArrowLeft" || e.key === "ArrowLeft") {
+    else if (e.key === "ArrowDown" || e.key === "Down") {
+        downPressed = false;
+    }
+    else if (e.key === "ArrowLeft" || e.key === "Left") {
         leftPressed = false;
+    }
+    else if (e.key === "ArrowRight" || e.key === "Right") {
+        rightPressed = false;
     }
 }
 
 function movePaddle() {
-    if (flipped) {
-        if (rightPressed && paddleX < canvasWidth - paddleWidth) {
-            paddleX += 7;
-        }
-        else if (leftPressed && paddleX > 0) {
-            paddleX -= 7;
-        }
-    } else {
-        if (rightPressed && paddleX < canvasWidth - paddleWidth) {
-            paddleX += 7;
-        }
-        else if (leftPressed && paddleX > 0) {
-            paddleX -= 7;
-        }
+    const speed = 5;
+    if (upPressed && paddleY > minPaddleY) {
+        paddleY -= speed;
+    }
+    if (downPressed && paddleY < maxPaddleY) {
+        paddleY += speed;
+    }
+    if (leftPressed && paddleX > minPaddleX) {
+        paddleX -= speed;
+    }
+    if (rightPressed && paddleX < maxPaddleX) {
+        paddleX += speed;
     }
 }
 
@@ -296,6 +301,5 @@ function gameLoop() {
 }
 
 initBlocks();
-lastFlipTime = Date.now();
 setInterval(gameLoop, 1000 / 60);
 restartBtn.addEventListener("click", restartGame);
