@@ -19,8 +19,8 @@ let paddleY = canvasHeight - 40;
 const ballRadius = 8;
 let ballX = canvasWidth / 2;
 let ballY = canvasHeight - 30;
-let ballSpeedX = 4;
-let ballSpeedY = -4;
+let ballSpeedX = 2.5;
+let ballSpeedY = -2.5;
 
 let numRows = 5;
 let numCols = 8;
@@ -36,7 +36,7 @@ let isGameOver = false;
 let isGameWon = false;
 let flipped = false;
 let lastFlipTime = 0;
-const flipInterval = 5000;
+const flipInterval = 8000;
 
 const blocksDestroyedEl = document.getElementById("blocksDestroyed");
 const livesEl = document.getElementById("lives");
@@ -60,8 +60,8 @@ function initBlocks() {
 function restartGame() {
     ballX = canvasWidth / 2;
     ballY = paddleY - ballRadius;
-    ballSpeedX = 4;
-    ballSpeedY = -4;
+    ballSpeedX = 2.5;
+    ballSpeedY = -2.5;
     paddleX = (canvasWidth - paddleWidth) / 2;
     paddleY = flipped ? 40 : canvasHeight - 40;
     score = 0;
@@ -169,8 +169,8 @@ function draw() {
         isGameWon = false;
         ballX = canvasWidth / 2;
         ballY = paddleY - ballRadius;
-        ballSpeedX = 4;
-        ballSpeedY = -4;
+        ballSpeedX = 2.5;
+        ballSpeedY = -2.5;
         paddleX = (canvasWidth - paddleWidth) / 2;
         initBlocks();
     }
@@ -201,7 +201,7 @@ function draw() {
                 ballSpeedY = -ballSpeedY;
                 let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
                 let angle = (Math.PI / 2) + hit * (Math.PI / 9);
-                ballSpeedX = Math.cos(angle) * 4;
+                ballSpeedX = Math.cos(angle) * 2.5;
                 ballSpeedY = -Math.abs(Math.sin(angle)) * 4;
             }
         }
@@ -212,8 +212,8 @@ function draw() {
             } else {
                 ballX = canvasWidth / 2;
                 ballY = paddleY - ballRadius;
-                ballSpeedX = 4;
-                ballSpeedY = 4;
+                ballSpeedX = 2.5;
+                ballSpeedY = 2.5;
                 paddleX = (canvasWidth - paddleWidth) / 2;
             }
         }
@@ -226,7 +226,7 @@ function draw() {
                 ballSpeedY = -ballSpeedY;
                 let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
                 let angle = (Math.PI / 2) + hit * (Math.PI / 9);
-                ballSpeedX = Math.cos(angle) * 4;
+                ballSpeedX = Math.cos(angle) * 2.5;
                 ballSpeedY = Math.abs(Math.sin(angle)) * 4;
             }
         }
@@ -237,8 +237,8 @@ function draw() {
             } else {
                 ballX = canvasWidth / 2;
                 ballY = paddleY - ballRadius;
-                ballSpeedX = 4;
-                ballSpeedY = -4;
+                ballSpeedX = 2.5;
+                ballSpeedY = -2.5;
                 paddleX = (canvasWidth - paddleWidth) / 2;
             }
         }
