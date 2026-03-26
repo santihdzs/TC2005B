@@ -1,0 +1,64 @@
+/* Estilos para el juego Breakout */
+/* Like the professor's examples - simple and clean */
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #222; /* Fondo oscuro como en los ejemplos del profe */
+    color: white;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+}
+
+#gameContainer {
+    display: inline-block;
+}
+
+#gameCanvas {
+    background-color: #000; /* Fondo negro del canvas */
+    border: 2px solid #444;
+    display: block;
+    margin-bottom: 10px;
+}
+
+#infoPanel {
+    background-color: #333;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#infoPanel p {
+    margin: 5px 0;
+    font-size: 18px;
+}
+
+#configPanel {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #555;
+}
+
+#configPanel label {
+    margin: 0 10px;
+}
+
+#configPanel input {
+    width: 50px;
+    padding: 5px;
+    font-size: 14px;
+}
+
+#restartBtn {
+    padding: 5px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    margin-left: 10px;
+}
+
+#restartBtn:hover {
+    background-color: #45a049;
+}
