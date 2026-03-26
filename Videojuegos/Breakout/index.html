@@ -7,27 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Contenedor principal del juego -->
     <div id="gameContainer">
-        <!-- Canvas donde se dibuja el juego -->
+        <div id="configPanel">
+            <label>Renglones: <input type="number" id="rowsInput" value="5" min="1" max="10"></label>
+            <label>Columnas: <input type="number" id="colsInput" value="8" min="1" max="15"></label>
+            <button id="restartBtn">Reiniciar</button>
+        </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        
-        <!-- Panel de información -->
         <div id="infoPanel">
-            <!-- Muestra los bloques destruidos -->
-            <p>Bloques destruidos: <span id="blocksDestroyed">0</span></p>
-            <!-- Muestra las vidas restantes -->
-            <p>Vidas: <span id="lives">3</span></p>
-            <!-- Configuración de bloques -->
-            <div id="configPanel">
-                <label>Renglones: <input type="number" id="rowsInput" value="5" min="1" max="10"></label>
-                <label>Columnas: <input type="number" id="colsInput" value="8" min="1" max="15"></label>
-                <button id="restartBtn">Reiniciar</button>
-            </div>
+            <span>Bloques destruidos: <span id="blocksDestroyed">0</span></span>
+            <span>Vidas: <span id="lives">3</span></span>
         </div>
     </div>
-
-    <!-- Referencia al archivo JavaScript -->
     <script src="game.js"></script>
 </body>
 </html>
