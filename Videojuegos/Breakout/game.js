@@ -8,8 +8,8 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-const canvasWidth = canvas.width;
-const canvasHeight = canvas.height;
+const canvasWidth = 800;
+const canvasHeight = 600;
 
 const paddleHeight = 10;
 const paddleWidth = 100;
@@ -26,15 +26,13 @@ let numCols = 8;
 const blockWidth = 75;
 const blockHeight = 20;
 const blockPadding = 10;
-const blockOffsetTop = 30;
-const blockOffsetLeft = 30;
+const blockOffsetTop = 50;
 
 let blocks = [];
 let score = 0;
 let lives = 3;
 let isGameOver = false;
 let isGameWon = false;
-let extraBalls = [];
 
 const blocksDestroyedEl = document.getElementById("blocksDestroyed");
 const livesEl = document.getElementById("lives");
@@ -44,11 +42,14 @@ const restartBtn = document.getElementById("restartBtn");
 
 function initBlocks() {
     blocks = [];
+    // center blocks
+    let totalWidth = numCols * blockWidth + (numCols - 1) * blockPadding;
+    let blockOffsetLeft = (canvasWidth - totalWidth) / 2;
+    
     for (let c = 0; c < numCols; c++) {
         blocks[c] = [];
         for (let r = 0; r < numRows; r++) {
-            let isSpecial = Math.random() < 0.1;
-            blocks[c][r] = { x: 0, y: 0, status: 1, isSpecial: isSpecial };
+            blocks[c][r] = { x: 0, y: 0, status: 1 };
         }
     }
 }
@@ -63,7 +64,6 @@ function restartGame() {
     lives = 3;
     isGameOver = false;
     isGameWon = false;
-    extraBalls = [];
     numRows = parseInt(rowsInput.value);
     numCols = parseInt(colsInput.value);
     initBlocks();
@@ -100,6 +100,9 @@ function drawBall() {
 }
 
 function drawBlocks() {
+    let totalWidth = numCols * blockWidth + (numCols - 1) * blockPadding;
+    let blockOffsetLeft = (canvasWidth - totalWidth) / 2;
+    
     for (let c = 0; c < numCols; c++) {
         for (let r = 0; r < numRows; r++) {
             if (blocks[c][r].status === 1) {
@@ -107,21 +110,8 @@ function drawBlocks() {
                 let blockY = (r * (blockHeight + blockPadding)) + blockOffsetTop;
                 blocks[c][r].x = blockX;
                 blocks[c][r].y = blockY;
-                if (blocks[c][r].isSpecial) {
-                    drawRect(blockX, blockY, blockWidth, blockHeight, "#FF0000");
-                } else {
-                    drawRect(blockX, blockY, blockWidth, blockHeight, "#0095DD");
-                }
+                drawRect(blockX, blockY, blockWidth, blockHeight, "#0095DD");
             }
-        }
-    }
-}
-
-function drawExtraBalls() {
-    for (let i = 0; i < extraBalls.length; i++) {
-        let b = extraBalls[i];
-        if (b.active) {
-            drawCircle(b.x, b.y, ballRadius, "#FF0000");
         }
     }
 }
@@ -133,74 +123,21 @@ function drawGameOver() {
     ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2);
 }
 
-function drawVictory() {
-    ctx.font = "40px Arial";
-    ctx.fillStyle = "green";
-    ctx.textAlign = "center";
-    ctx.fillText("YOU WIN!", canvasWidth / 2, canvasHeight / 2);
-}
-
 function collisionDetection() {
     for (let c = 0; c < numCols; c++) {
         for (let r = 0; r < numRows; r++) {
             let b = blocks[c][r];
             if (b.status === 1) {
-                if (ballX > b.x && ballX < b.x + blockWidth && 
-                    ballY > b.y && ballY < b.y + blockHeight) {
+                if (ballX + ballRadius > b.x && ballX - ballRadius < b.x + blockWidth && 
+                    ballY + ballRadius > b.y && ballY - ballRadius < b.y + blockHeight) {
                     ballSpeedY = -ballSpeedY;
                     b.status = 0;
                     score++;
-                    if (b.isSpecial) {
-                        createExtraBall();
-                    }
                     if (score === numRows * numCols) {
                         isGameWon = true;
                     }
-                    
-                    if (isGameWon) {
-                        score = 0;
-                        isGameWon = false;
-                        ballX = canvasWidth / 2;
-                        ballY = canvasHeight - 30;
-                        ballSpeedX = 4;
-                        ballSpeedY = -4;
-                        paddleX = (canvasWidth - paddleWidth) / 2;
-                        initBlocks();
-                    }
                 }
             }
-        }
-    }
-}
-
-function createExtraBall() {
-    extraBalls.push({
-        x: ballX,
-        y: ballY,
-        speedX: -ballSpeedX,
-        speedY: ballSpeedY,
-        active: true
-    });
-}
-
-function updateExtraBalls() {
-    for (let i = 0; i < extraBalls.length; i++) {
-        let b = extraBalls[i];
-        if (!b.active) continue;
-        b.x += b.speedX;
-        b.y += b.speedY;
-        if (b.x + ballRadius > canvasWidth || b.x - ballRadius < 0) {
-            b.speedX = -b.speedX;
-        }
-        if (b.y - ballRadius < 0) {
-            b.speedY = -b.speedY;
-        }
-        if (b.y + ballRadius > canvasHeight) {
-            b.active = false;
-        }
-        if (b.y + ballRadius > canvasHeight - paddleHeight &&
-            b.x > paddleX && b.x < paddleX + paddleWidth) {
-            b.speedY = -b.speedY;
         }
     }
 }
@@ -210,7 +147,6 @@ function draw() {
     drawBlocks();
     drawBall();
     drawPaddle();
-    drawExtraBalls();
     
     if (isGameOver) {
         drawGameOver();
@@ -218,14 +154,19 @@ function draw() {
     }
     
     if (isGameWon) {
-        drawVictory();
-        return;
+        score = 0;
+        isGameWon = false;
+        ballX = canvasWidth / 2;
+        ballY = canvasHeight - 30;
+        ballSpeedX = 4;
+        ballSpeedY = -4;
+        paddleX = (canvasWidth - paddleWidth) / 2;
+        initBlocks();
     }
     
     collisionDetection();
     ballX += ballSpeedX;
     ballY += ballSpeedY;
-    updateExtraBalls();
     
     if (ballX + ballRadius > canvasWidth || ballX - ballRadius < 0) {
         ballSpeedX = -ballSpeedX;
@@ -239,6 +180,7 @@ function draw() {
             let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
             let angle = (Math.PI / 2) + hit * (Math.PI / 9);
             ballSpeedX = Math.cos(angle) * 4;
+            ballSpeedY = Math.abs(Math.sin(angle)) * 4;
         }
     }
     

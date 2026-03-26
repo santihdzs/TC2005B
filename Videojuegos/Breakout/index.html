@@ -1,23 +1,88 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Breakout - TC2005B</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+        body {
+            background-color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        #headerContainer {
+            background-color: #3333AA;
+            color: white;
+            width: 100%;
+            padding: 15px 0;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+        }
+        #configPanel {
+            background-color: #444;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        #configPanel label {
+            margin: 0 10px;
+            color: white;
+        }
+        #configPanel input {
+            width: 50px;
+            padding: 5px;
+        }
+        #restartBtn {
+            padding: 5px 15px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            margin-left: 10px;
+        }
+        #restartBtn:hover {
+            background-color: #45a049;
+        }
+        #gameCanvas {
+            border: 2px solid black;
+            background-color: #87CEEB;
+        }
+        #infoPanel {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 18px;
+            color: white;
+        }
+        #infoPanel span {
+            margin: 0 20px;
+        }
+    </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <div id="configPanel">
-            <label>Renglones: <input type="number" id="rowsInput" value="5" min="1" max="10"></label>
-            <label>Columnas: <input type="number" id="colsInput" value="8" min="1" max="15"></label>
-            <button id="restartBtn">Reiniciar</button>
-        </div>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="infoPanel">
-            <span>Bloques destruidos: <span id="blocksDestroyed">0</span></span>
-            <span>Vidas: <span id="lives">3</span></span>
-        </div>
+    <div id="headerContainer">
+        <h1>BREAKOUT</h1>
+    </div>
+    <div id="configPanel">
+        <label>Renglones: <input type="number" id="rowsInput" value="5" min="1" max="10"></label>
+        <label>Columnas: <input type="number" id="colsInput" value="8" min="1" max="15"></label>
+        <button id="restartBtn">Reiniciar</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="infoPanel">
+        <span>Bloques: <span id="blocksDestroyed">0</span></span>
+        <span>Vidas: <span id="lives">3</span></span>
     </div>
     <script src="game.js"></script>
 </body>
