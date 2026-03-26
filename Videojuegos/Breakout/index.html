@@ -33,22 +33,13 @@
             border-radius: 5px;
             margin-bottom: 10px;
         }
-        #configPanel label {
-            margin: 0 10px;
-            color: white;
-        }
-        #configPanel input {
-            width: 50px;
-            padding: 5px;
-        }
         #restartBtn {
-            padding: 5px 15px;
+            padding: 8px 20px;
             cursor: pointer;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 3px;
-            margin-left: 10px;
         }
         #restartBtn:hover {
             background-color: #45a049;
@@ -75,8 +66,6 @@
         <h1>BREAKOUT</h1>
     </div>
     <div id="configPanel">
-        <label>Renglones: <input type="number" id="rowsInput" value="5" min="1" max="10"></label>
-        <label>Columnas: <input type="number" id="colsInput" value="8" min="1" max="15"></label>
         <button id="restartBtn">Reiniciar</button>
     </div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
