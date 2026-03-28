@@ -11,30 +11,42 @@ const ctx = canvas.getContext("2d");
 const canvasWidth = 800;
 const canvasHeight = 600;
 
-const perimeterMargin = 40;
 const centerSize = 50;
 
-// paddle dimensions based on position
-let paddleWidth = 60;
-let paddleHeight = 12;
-let paddleX = canvasWidth / 2 - paddleWidth / 2;
-let paddleY = perimeterMargin;
-let paddleSide = 'top'; // top, right, bottom, left
-let sidesHit = 0;
+// Brick config
+const brickThickness = 20;
+const brickRows = 3;
+const brickGap = 2;
+const brickDepth = brickRows * (brickThickness + brickGap);
+const brickLengthH = 40;
+const brickLengthV = 40;
+
+// Paddle track - the perimeter rectangle just inside the bricks
+const trackLeft = brickDepth;
+const trackTop = brickDepth;
+const trackRight = canvasWidth - brickDepth;
+const trackBottom = canvasHeight - brickDepth;
+const trackW = trackRight - trackLeft;
+const trackH = trackBottom - trackTop;
+const trackPerimeter = 2 * trackW + 2 * trackH;
+
+// Paddle config
+const paddleLength = 80;
+const paddleThick = 12;
+let paddlePos = 0; // distance along perimeter, clockwise from top-left corner
+let paddleSide = 'bottom';
 
 const ballRadius = 8;
 let ballX = canvasWidth / 2;
 let ballY = canvasHeight / 2;
-let ballSpeedX = 0.05;
-let ballSpeedY = 0.05;
+let ballSpeedX = 3;
+let ballSpeedY = 3;
 
-const blockSize = 30;
 let blocks = [];
 let score = 0;
 let lives = 3;
 let isGameOver = false;
 let ballStarted = false;
-let speedIncrease = 0;
 
 const blocksDestroyedEl = document.getElementById("blocksDestroyed");
 const livesEl = document.getElementById("lives");
@@ -42,55 +54,133 @@ const restartBtn = document.getElementById("restartBtn");
 
 function initBlocks() {
     blocks = [];
-    
-    // top row
-    for (let i = 0; i < 20; i++) {
-        blocks.push({ x: i * blockSize, y: 0, status: 1 });
+
+    // Top rows
+    for (let row = 0; row < brickRows; row++) {
+        let y = row * (brickThickness + brickGap);
+        let count = Math.floor(canvasWidth / (brickLengthH + brickGap));
+        let totalW = count * (brickLengthH + brickGap) - brickGap;
+        let offsetX = (canvasWidth - totalW) / 2;
+        for (let col = 0; col < count; col++) {
+            blocks.push({
+                x: offsetX + col * (brickLengthH + brickGap),
+                y: y,
+                w: brickLengthH,
+                h: brickThickness,
+                status: 1,
+                side: 'top'
+            });
+        }
     }
-    // bottom row
-    for (let i = 0; i < 20; i++) {
-        blocks.push({ x: i * blockSize, y: canvasHeight - blockSize, status: 1 });
+
+    // Bottom rows
+    for (let row = 0; row < brickRows; row++) {
+        let y = canvasHeight - (row + 1) * (brickThickness + brickGap) + brickGap;
+        let count = Math.floor(canvasWidth / (brickLengthH + brickGap));
+        let totalW = count * (brickLengthH + brickGap) - brickGap;
+        let offsetX = (canvasWidth - totalW) / 2;
+        for (let col = 0; col < count; col++) {
+            blocks.push({
+                x: offsetX + col * (brickLengthH + brickGap),
+                y: y,
+                w: brickLengthH,
+                h: brickThickness,
+                status: 1,
+                side: 'bottom'
+            });
+        }
     }
-    // left column
-    for (let i = 1; i < 18; i++) {
-        blocks.push({ x: 0, y: i * blockSize, status: 1 });
+
+    // Left columns (skip corners covered by top/bottom)
+    for (let row = 0; row < brickRows; row++) {
+        let x = row * (brickThickness + brickGap);
+        let startY = brickDepth;
+        let endY = canvasHeight - brickDepth;
+        let space = endY - startY;
+        let count = Math.floor(space / (brickLengthV + brickGap));
+        let totalH = count * (brickLengthV + brickGap) - brickGap;
+        let offsetY = startY + (space - totalH) / 2;
+        for (let col = 0; col < count; col++) {
+            blocks.push({
+                x: x,
+                y: offsetY + col * (brickLengthV + brickGap),
+                w: brickThickness,
+                h: brickLengthV,
+                status: 1,
+                side: 'left'
+            });
+        }
     }
-    // right column
-    for (let i = 1; i < 18; i++) {
-        blocks.push({ x: canvasWidth - blockSize, y: i * blockSize, status: 1 });
+
+    // Right columns
+    for (let row = 0; row < brickRows; row++) {
+        let x = canvasWidth - (row + 1) * (brickThickness + brickGap) + brickGap;
+        let startY = brickDepth;
+        let endY = canvasHeight - brickDepth;
+        let space = endY - startY;
+        let count = Math.floor(space / (brickLengthV + brickGap));
+        let totalH = count * (brickLengthV + brickGap) - brickGap;
+        let offsetY = startY + (space - totalH) / 2;
+        for (let col = 0; col < count; col++) {
+            blocks.push({
+                x: x,
+                y: offsetY + col * (brickLengthV + brickGap),
+                w: brickThickness,
+                h: brickLengthV,
+                status: 1,
+                side: 'right'
+            });
+        }
+    }
+}
+
+// Convert perimeter distance to x,y and side
+function perimToXY(p) {
+    p = ((p % trackPerimeter) + trackPerimeter) % trackPerimeter;
+    if (p < trackW) {
+        return { x: trackLeft + p, y: trackTop, side: 'top' };
+    } else if (p < trackW + trackH) {
+        return { x: trackRight, y: trackTop + (p - trackW), side: 'right' };
+    } else if (p < 2 * trackW + trackH) {
+        return { x: trackRight - (p - trackW - trackH), y: trackBottom, side: 'bottom' };
+    } else {
+        return { x: trackLeft, y: trackBottom - (p - 2 * trackW - trackH), side: 'left' };
+    }
+}
+
+function getPaddleRect() {
+    let center = perimToXY(paddlePos);
+    paddleSide = center.side;
+
+    if (center.side === 'top') {
+        return { x: center.x - paddleLength / 2, y: trackTop - paddleThick, w: paddleLength, h: paddleThick };
+    } else if (center.side === 'bottom') {
+        return { x: center.x - paddleLength / 2, y: trackBottom, w: paddleLength, h: paddleThick };
+    } else if (center.side === 'left') {
+        return { x: trackLeft - paddleThick, y: center.y - paddleLength / 2, w: paddleThick, h: paddleLength };
+    } else {
+        return { x: trackRight, y: center.y - paddleLength / 2, w: paddleThick, h: paddleLength };
     }
 }
 
 function restartGame() {
     ballX = canvasWidth / 2;
     ballY = canvasHeight / 2;
-    ballSpeedX = 0.05;
-    ballSpeedY = 0.05;
+    ballSpeedX = 3;
+    ballSpeedY = 3;
     score = 0;
     lives = 3;
     isGameOver = false;
     ballStarted = false;
-    speedIncrease = 0;
-    sidesHit = 0;
+    paddlePos = trackW + trackH + trackW / 2; // bottom center
     initBlocks();
-    updatePaddlePosition();
     updateDisplay();
 }
 
-function updatePaddlePosition() {
-    if (paddleSide === 'top') {
-        paddleX = Math.max(perimeterMargin, Math.min(canvasWidth - perimeterMargin - paddleWidth, paddleX));
-        paddleY = perimeterMargin;
-    } else if (paddleSide === 'bottom') {
-        paddleX = Math.max(perimeterMargin, Math.min(canvasWidth - perimeterMargin - paddleWidth, paddleX));
-        paddleY = canvasHeight - perimeterMargin - paddleHeight;
-    } else if (paddleSide === 'left') {
-        paddleX = perimeterMargin;
-        paddleY = Math.max(perimeterMargin, Math.min(canvasHeight - perimeterMargin - paddleHeight, paddleY));
-    } else if (paddleSide === 'right') {
-        paddleX = canvasWidth - perimeterMargin - paddleWidth;
-        paddleY = Math.max(perimeterMargin, Math.min(canvasHeight - perimeterMargin - paddleHeight, paddleY));
-    }
+function resetBall() {
+    ballStarted = false;
+    ballSpeedX = 3;
+    ballSpeedY = 3;
 }
 
 function updateDisplay() {
@@ -115,7 +205,8 @@ function drawCircle(x, y, r, color) {
 }
 
 function drawPaddle() {
-    drawRect(paddleX, paddleY, paddleWidth, paddleHeight, "#3333AA");
+    let pr = getPaddleRect();
+    drawRect(pr.x, pr.y, pr.w, pr.h, "#3333AA");
 }
 
 function drawBall() {
@@ -125,42 +216,54 @@ function drawBall() {
 function drawBlocks() {
     for (let b of blocks) {
         if (b.status === 1) {
-            drawRect(b.x, b.y, blockSize, blockSize, "#0095DD");
+            let color;
+            if (b.side === 'top') color = "#FF6633";
+            else if (b.side === 'bottom') color = "#33CC33";
+            else if (b.side === 'left') color = "#FFCC00";
+            else color = "#CC33FF";
+            drawRect(b.x, b.y, b.w, b.h, color);
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(b.x, b.y, b.w, b.h);
         }
     }
-}
-
-function drawGameOver() {
-    ctx.font = "40px Arial";
-    ctx.fillStyle = "red";
-    ctx.textAlign = "center";
-    ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2);
 }
 
 function drawCenter() {
     let cx = canvasWidth / 2;
     let cy = canvasHeight / 2;
-    drawRect(cx - centerSize/2, cy - centerSize/2, centerSize, centerSize, "#FF0000");
+    drawRect(cx - centerSize / 2, cy - centerSize / 2, centerSize, centerSize, "#FF0000");
+    ctx.strokeStyle = "#AA0000";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - centerSize / 2, cy - centerSize / 2, centerSize, centerSize);
+}
+
+function drawGameOver() {
+    ctx.font = "40px Verdana";
+    ctx.fillStyle = "red";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2 + 100);
 }
 
 function collisionDetection() {
     for (let b of blocks) {
         if (b.status === 1) {
-            if (ballX + ballRadius > b.x && ballX - ballRadius < b.x + blockSize && 
-                ballY + ballRadius > b.y && ballY - ballRadius < b.y + blockSize) {
+            if (ballX + ballRadius > b.x && ballX - ballRadius < b.x + b.w &&
+                ballY + ballRadius > b.y && ballY - ballRadius < b.y + b.h) {
+
                 let overlapLeft = ballX + ballRadius - b.x;
-                let overlapRight = b.x + blockSize - (ballX - ballRadius);
+                let overlapRight = b.x + b.w - (ballX - ballRadius);
                 let overlapTop = ballY + ballRadius - b.y;
-                let overlapBottom = b.y + blockSize - (ballY - ballRadius);
-                
+                let overlapBottom = b.y + b.h - (ballY - ballRadius);
+
                 let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-                
+
                 if (minOverlap === overlapLeft || minOverlap === overlapRight) {
                     ballSpeedX = -ballSpeedX;
                 } else {
                     ballSpeedY = -ballSpeedY;
                 }
-                
+
                 b.status = 0;
                 score++;
             }
@@ -168,122 +271,73 @@ function collisionDetection() {
     }
 }
 
-function changePaddleSide() {
-    sidesHit++;
-    if (sidesHit % 4 === 0) {
-        speedIncrease += 0.02;
-    }
-    
-    if (paddleSide === 'top') {
-        paddleSide = 'right';
-        paddleWidth = 12;
-        paddleHeight = 60;
-        paddleX = canvasWidth - perimeterMargin - paddleWidth;
-        paddleY = perimeterMargin;
-    } else if (paddleSide === 'right') {
-        paddleSide = 'bottom';
-        paddleWidth = 60;
-        paddleHeight = 12;
-        paddleX = canvasWidth / 2 - paddleWidth / 2;
-        paddleY = canvasHeight - perimeterMargin - paddleHeight;
-    } else if (paddleSide === 'bottom') {
-        paddleSide = 'left';
-        paddleWidth = 12;
-        paddleHeight = 60;
-        paddleX = perimeterMargin;
-        paddleY = canvasHeight / 2 - paddleHeight / 2;
-    } else if (paddleSide === 'left') {
-        paddleSide = 'top';
-        paddleWidth = 60;
-        paddleHeight = 12;
-        paddleX = canvasWidth / 2 - paddleWidth / 2;
-        paddleY = perimeterMargin;
+function checkPaddleCollision() {
+    let pr = getPaddleRect();
+
+    if (ballX + ballRadius > pr.x && ballX - ballRadius < pr.x + pr.w &&
+        ballY + ballRadius > pr.y && ballY - ballRadius < pr.y + pr.h) {
+
+        if (paddleSide === 'top') {
+            ballSpeedY = Math.abs(ballSpeedY);
+            let hit = (ballX - (pr.x + pr.w / 2)) / (pr.w / 2);
+            ballSpeedX += hit * 0.5;
+        } else if (paddleSide === 'bottom') {
+            ballSpeedY = -Math.abs(ballSpeedY);
+            let hit = (ballX - (pr.x + pr.w / 2)) / (pr.w / 2);
+            ballSpeedX += hit * 0.5;
+        } else if (paddleSide === 'left') {
+            ballSpeedX = Math.abs(ballSpeedX);
+            let hit = (ballY - (pr.y + pr.h / 2)) / (pr.h / 2);
+            ballSpeedY += hit * 0.5;
+        } else if (paddleSide === 'right') {
+            ballSpeedX = -Math.abs(ballSpeedX);
+            let hit = (ballY - (pr.y + pr.h / 2)) / (pr.h / 2);
+            ballSpeedY += hit * 0.5;
+        }
+
+        // Clamp speed
+        let maxSpeed = 7;
+        ballSpeedX = Math.max(-maxSpeed, Math.min(maxSpeed, ballSpeedX));
+        ballSpeedY = Math.max(-maxSpeed, Math.min(maxSpeed, ballSpeedY));
     }
 }
 
-function draw() {
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    
-    drawCenter();
-    drawBlocks();
-    drawBall();
-    drawPaddle();
-    
-    if (isGameOver) {
-        drawGameOver();
-        return;
-    }
-    
-    if (!ballStarted) {
-        ballX = paddleX + paddleWidth / 2;
-        ballY = paddleY + paddleHeight / 2;
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "white";
-        ctx.textAlign = "center";
-        ctx.fillText("Presiona ESPACIO para iniciar", canvasWidth / 2, canvasHeight / 2 + 50);
-        updateDisplay();
-        requestAnimationFrame(draw);
-        return;
-    }
-    
-    collisionDetection();
-    ballX += ballSpeedX + (ballSpeedX > 0 ? speedIncrease : -speedIncrease);
-    ballY += ballSpeedY + (ballSpeedY > 0 ? speedIncrease : -speedIncrease);
-    
-    // wall collisions
-    if (ballX + ballRadius > canvasWidth || ballX - ballRadius < 0) {
-        ballSpeedX = -ballSpeedX;
-    }
-    if (ballY + ballRadius > canvasHeight || ballY - ballRadius < 0) {
-        ballSpeedY = -ballSpeedY;
-    }
-    
-    // paddle collision
-    if (ballX + ballRadius > paddleX && ballX - ballRadius < paddleX + paddleWidth &&
-        ballY + ballRadius > paddleY && ballY - ballRadius < paddleY + paddleHeight) {
-        
-        if (paddleSide === 'top' || paddleSide === 'bottom') {
-            ballSpeedY = -ballSpeedY;
-            let hit = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
-            ballSpeedX += hit * 0.01;
-            changePaddleSide();
-        } else {
-            ballSpeedX = -ballSpeedX;
-            let hit = (ballY - (paddleY + paddleHeight / 2)) / (paddleHeight / 2);
-            ballSpeedY += hit * 0.01;
-            changePaddleSide();
-        }
-    }
-    
-    // center collision
+function checkCenterCollision() {
     let cx = canvasWidth / 2;
     let cy = canvasHeight / 2;
-    if (ballX + ballRadius > cx - centerSize/2 && ballX - ballRadius < cx + centerSize/2 &&
-        ballY + ballRadius > cy - centerSize/2 && ballY - ballRadius < cy + centerSize/2) {
+    let half = centerSize / 2;
+
+    if (ballX + ballRadius > cx - half && ballX - ballRadius < cx + half &&
+        ballY + ballRadius > cy - half && ballY - ballRadius < cy + half) {
         lives--;
-        if (lives === 0) {
+        if (lives <= 0) {
             isGameOver = true;
         } else {
-            ballStarted = false;
-            ballSpeedX = 0.05;
-            ballSpeedY = 0.05;
+            resetBall();
         }
     }
-    
-    // check if all blocks destroyed
-    let blocksLeft = 0;
-    for (let b of blocks) {
-        if (b.status === 1) blocksLeft++;
-    }
-    
-    if (blocksLeft === 0) {
-        initBlocks();
-    }
-    
-    updateDisplay();
-    requestAnimationFrame(draw);
 }
 
+function checkWallBounce() {
+    if (ballX - ballRadius < 0) {
+        ballX = ballRadius;
+        ballSpeedX = Math.abs(ballSpeedX);
+    }
+    if (ballX + ballRadius > canvasWidth) {
+        ballX = canvasWidth - ballRadius;
+        ballSpeedX = -Math.abs(ballSpeedX);
+    }
+    if (ballY - ballRadius < 0) {
+        ballY = ballRadius;
+        ballSpeedY = Math.abs(ballSpeedY);
+    }
+    if (ballY + ballRadius > canvasHeight) {
+        ballY = canvasHeight - ballRadius;
+        ballSpeedY = -Math.abs(ballSpeedY);
+    }
+}
+
+// Input
 let upPressed = false;
 let downPressed = false;
 let leftPressed = false;
@@ -307,6 +361,11 @@ function keyDownHandler(e) {
     }
     if (e.code === "Space" && !ballStarted && !isGameOver) {
         ballStarted = true;
+        // Launch ball away from current paddle side
+        if (paddleSide === 'top') { ballSpeedX = 3; ballSpeedY = 3; }
+        else if (paddleSide === 'bottom') { ballSpeedX = 3; ballSpeedY = -3; }
+        else if (paddleSide === 'left') { ballSpeedX = 3; ballSpeedY = 3; }
+        else if (paddleSide === 'right') { ballSpeedX = -3; ballSpeedY = 3; }
     }
 }
 
@@ -327,45 +386,100 @@ function keyUpHandler(e) {
 
 function movePaddle() {
     const speed = 4;
-    
-    if (paddleSide === 'top') {
-        if (leftPressed && paddleX > perimeterMargin) {
-            paddleX -= speed;
-        }
-        if (rightPressed && paddleX < canvasWidth - perimeterMargin - paddleWidth) {
-            paddleX += speed;
-        }
-    } else if (paddleSide === 'bottom') {
-        if (leftPressed && paddleX > perimeterMargin) {
-            paddleX -= speed;
-        }
-        if (rightPressed && paddleX < canvasWidth - perimeterMargin - paddleWidth) {
-            paddleX += speed;
-        }
-    } else if (paddleSide === 'left') {
-        if (upPressed && paddleY > perimeterMargin) {
-            paddleY -= speed;
-        }
-        if (downPressed && paddleY < canvasHeight - perimeterMargin - paddleHeight) {
-            paddleY += speed;
-        }
-    } else if (paddleSide === 'right') {
-        if (upPressed && paddleY > perimeterMargin) {
-            paddleY -= speed;
-        }
-        if (downPressed && paddleY < canvasHeight - perimeterMargin - paddleHeight) {
-            paddleY += speed;
-        }
+    let center = perimToXY(paddlePos);
+    let side = center.side;
+
+    // arrow keys map to perimeter movement based on side
+    let move = 0;
+
+    if (side === 'top') {
+        if (leftPressed) move = -speed;
+        if (rightPressed) move = speed;
+    } else if (side === 'right') {
+        if (upPressed) move = -speed;
+        if (downPressed) move = speed;
+    } else if (side === 'bottom') {
+        if (leftPressed) move = speed;
+        if (rightPressed) move = -speed;
+    } else if (side === 'left') {
+        if (upPressed) move = speed;
+        if (downPressed) move = -speed;
     }
-    
-    updatePaddlePosition();
+
+    if (move !== 0) {
+        paddlePos = ((paddlePos + move) % trackPerimeter + trackPerimeter) % trackPerimeter;
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    drawCenter();
+    drawBlocks();
+    drawPaddle();
+    drawBall();
+
+    if (isGameOver) {
+        drawGameOver();
+        updateDisplay();
+        return;
+    }
+
+    if (!ballStarted) {
+        // Ball sticks to paddle
+        let pr = getPaddleRect();
+        if (paddleSide === 'top') {
+            ballX = pr.x + pr.w / 2;
+            ballY = pr.y + pr.h + ballRadius + 2;
+        } else if (paddleSide === 'bottom') {
+            ballX = pr.x + pr.w / 2;
+            ballY = pr.y - ballRadius - 2;
+        } else if (paddleSide === 'left') {
+            ballX = pr.x + pr.w + ballRadius + 2;
+            ballY = pr.y + pr.h / 2;
+        } else if (paddleSide === 'right') {
+            ballX = pr.x - ballRadius - 2;
+            ballY = pr.y + pr.h / 2;
+        }
+
+        ctx.font = "20px Verdana";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.fillText("Presiona ESPACIO para iniciar", canvasWidth / 2, canvasHeight / 2 + 80);
+        updateDisplay();
+        return;
+    }
+
+    // Update ball position
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+
+    checkWallBounce();
+    collisionDetection();
+    checkPaddleCollision();
+    checkCenterCollision();
+
+    // Check win
+    let blocksLeft = 0;
+    for (let b of blocks) {
+        if (b.status === 1) blocksLeft++;
+    }
+    if (blocksLeft === 0) {
+        initBlocks();
+    }
+
+    updateDisplay();
 }
 
 function gameLoop() {
     movePaddle();
     draw();
+    requestAnimationFrame(gameLoop);
 }
 
+// Init
+paddlePos = trackW + trackH + trackW / 2; // bottom center
 initBlocks();
-setInterval(gameLoop, 1000 / 60);
+updateDisplay();
+requestAnimationFrame(gameLoop);
 restartBtn.addEventListener("click", restartGame);
